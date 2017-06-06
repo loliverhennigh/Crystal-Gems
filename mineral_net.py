@@ -14,23 +14,26 @@ from mineral import *
 class Mineral_Net:
   def __init__(self):
 
-    if not self.save_file_exits():
-      self.generate_url_lists()
-      self.save_to_pickle()
-    else:
-      self.load_from_pickle()
+    # make store lists
+    self.minerals = dict()
+    self.mineral_names = []
+    self.image_urls = defaultdict(list)
+    self.mineral_urls = dict()
+    self.generate_url_lists()
 
-    self.mineral_list = dict()
-    for mineral in self.mineral_urls:
-      print(self.mineral_urls[mineral])
-      self.mineral_list[mineral] = Mineral(self.mineral_urls[mineral])
+    for name in self.mineral_names:
+      self.minerals[name] = Mineral(name, self.mineral_urls[name])
 
-    for mineral in self.mineral_list:
-      self.mineral_list[mineral].print_all_attributes()
+    # Downloading images
+    for name in tqdm(self.mineral_names):
+      for image in self.image_urls[name]:
+        self.minerals[name].add_image(image)
+
+    for name in self.mineral_names:
+      self.minerals[name].print_all_attributes()
 
   def generate_url_lists(self):
     # find all mineral urls i need
-    mineral_urls = []
     base_url = 'http://www.minerals.net/MineralImages'
     abc_url_list = []
     #for l in ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','T','U','V','W','X','Y','Z']:
@@ -40,59 +43,27 @@ class Mineral_Net:
       print("scanning page " + url + " ...")
       page = requests.get(url)
       html = etree.HTML(page.content)
-      base_1 = html.findall(".//div[@id]")
-      for base in base_1:
-        base_2 = base.findall(".//div") 
-        if len(base_2) > 0:
-          for base in base_2:
-            base_3 = base.findall(".//a")
-            for base in base_3:
-              keys = base.attrib.keys()
-              if ('style' in keys):
-                if base.attrib['style'] == 'font-size:Large;':
-                  mineral_urls.append(base.attrib['href'])
-              if ('class' in keys):
-                if base.attrib['class'] == 'pic':
-                  mineral_urls.append(base.attrib['href'])
-              
-      print("finished!")
+      images = html.xpath('.//a')
+      for i in images:
+        if 'href' in i.attrib.keys():
+          if '../Image/' in i.attrib['href']:
+            name = i.attrib['href'].split('/')[-1][:-5]
+            image = i.find('.//img')
+            self.image_urls[name].append(image.attrib['src'])
 
-    # get rid of repeats
-    mineral_urls_store = []
-    for i in mineral_urls:
-      if i not in mineral_urls_store:
-        mineral_urls_store.append(i)
-    mineral_urls = mineral_urls_store
+    # modify image urls to make larger (remove -t flag)
+    for name in self.image_urls:
+      for i in xrange(len(self.image_urls[name])):
+        self.image_urls[name][i] = self.image_urls[name][i][:-6] + ".jpg"
 
-    # get proper list of mineral urls
-    proper_mineral_urls = dict()
-    for i in mineral_urls:
-      if "Mineral/" in i:
-        i_type = i.split('/')[-1][:-5]
-        proper_mineral_urls[i_type] = "http://www.minerals.net/" + i
+    # make list of mineral names
+    for name in self.image_urls:   
+      self.mineral_names.append(name)
 
-    # get proper list of image urls
-    image_urls = defaultdict(list)
-    image_count = 0
-    print("generating list of images")
-    for i in tqdm(mineral_urls):
-      if "../Image/" in i:
-        i_type = i.split('/')[-1][:-5]
-        image_page = "http://www.minerals.net" + i[2:]
-        print(image_page)
-        html_page = requests.get(image_page).content
-        image_index = html_page.find(".jpg&")
-        html_page = html_page[image_index-200:image_index+100]
-        html_page = html_page.split('"')
-        image_url = "error"
-        for url in html_page:
-          if "jpg" in url:
-            image_url = url
-        image_urls[i_type].append("http://www.minerals.net/" + image_url)
-        image_count += 1
- 
-    self.image_urls = image_urls   
-    self.mineral_urls = proper_mineral_urls   
+    # make list of mineral url pages
+    for name in self.mineral_names:
+      self.mineral_urls[name] = 'http://www.minerals.net/mineral/' + name + '.aspx'
+
 
   def save_file_exits(self):
     if os.path.isfile('./pickle_minerals.pickle'):
