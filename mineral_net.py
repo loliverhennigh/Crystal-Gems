@@ -22,10 +22,11 @@ class Mineral_Net:
 
     self.mineral_list = dict()
     for mineral in self.mineral_urls:
+      print(self.mineral_urls[mineral])
       self.mineral_list[mineral] = Mineral(self.mineral_urls[mineral])
 
     for mineral in self.mineral_list:
-      mineral.print_all_attributes()
+      self.mineral_list[mineral].print_all_attributes()
 
   def generate_url_lists(self):
     # find all mineral urls i need
@@ -43,9 +44,17 @@ class Mineral_Net:
       for base in base_1:
         base_2 = base.findall(".//div") 
         if len(base_2) > 0:
-          base_2 = base_2[0]
-          for base in base_2.findall(".//a"):
-            mineral_urls.append(base.attrib['href'])
+          for base in base_2:
+            base_3 = base.findall(".//a")
+            for base in base_3:
+              keys = base.attrib.keys()
+              if ('style' in keys):
+                if base.attrib['style'] == 'font-size:Large;':
+                  mineral_urls.append(base.attrib['href'])
+              if ('class' in keys):
+                if base.attrib['class'] == 'pic':
+                  mineral_urls.append(base.attrib['href'])
+              
       print("finished!")
 
     # get rid of repeats
@@ -58,16 +67,16 @@ class Mineral_Net:
     # get proper list of mineral urls
     proper_mineral_urls = dict()
     for i in mineral_urls:
-      if "Mineral" in i:
+      if "Mineral/" in i:
         i_type = i.split('/')[-1][:-5]
-        proper_mineral_urls[i_type] = "http://www.minerals.net" + i
+        proper_mineral_urls[i_type] = "http://www.minerals.net/" + i
 
     # get proper list of image urls
     image_urls = defaultdict(list)
     image_count = 0
     print("generating list of images")
     for i in tqdm(mineral_urls):
-      if "Image" in i:
+      if "../Image/" in i:
         i_type = i.split('/')[-1][:-5]
         image_page = "http://www.minerals.net" + i[2:]
         print(image_page)
@@ -84,12 +93,6 @@ class Mineral_Net:
  
     self.image_urls = image_urls   
     self.mineral_urls = proper_mineral_urls   
-    print(image_urls)
-    print(proper_mineral_urls)
-    print(len(image_urls))
-    print(len(proper_mineral_urls))
-    print(image_count)
-    
 
   def save_file_exits(self):
     if os.path.isfile('./pickle_minerals.pickle'):

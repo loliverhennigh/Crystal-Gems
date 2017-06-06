@@ -14,21 +14,9 @@ class Mineral:
     self.attributes_dict = dict()
     page = requests.get(url)
     html = etree.HTML(page.content)
-    tables = html.findall(".//table")
-    for tab in tables:
-      tab_children = tab.getchildren()
-      for att in tab_children:
-        name = att.find(".//strong").text
-        if name is None:
-          break
-        value = att.find(".//span")
-        if value is not None:
-          value = att.find(".//span").text
-        if value is None:
-          value = ""
-          for v in att.findall(".//a"):
-            value = value + " " + v.attrib['href'] 
-        self.attributes_dict[name] = value
+    tables = html.xpath('.//span[@id="ctl00_ContentPlaceHolder1_lblHardness"]')[0]
+    print(tables)
+    print(tables.attrib)
 
   def print_all_attributes(self):
     for att in self.attributes_dict:
@@ -40,11 +28,11 @@ class Mineral:
   def add_image(self, url):
     self.image_urls.append(url)
 
-    """chemical_formula, composition, variable_formula, color, streak, hardness, crystal_system, crystal_forms, transparency, specific_gravity, luster, cleavage, fracture, tenacity, group, striking_features, evironment, rock_type, polularity, prevalence, demand """
+"""chemical_formula, composition, variable_formula, color, streak, hardness, crystal_system, crystal_forms, transparency, specific_gravity, luster, cleavage, fracture, tenacity, group, striking_features, evironment, rock_type, polularity, prevalence, demand """
 
-  #def add_image(self, url):
-  
-  #def save_mineral(self, path='./'):
+#def add_image(self, url):
 
-Mineral('http://www.minerals.net/mineral/diopside.aspx')
+#def save_mineral(self, path='./'):
+
+#Mineral('http://www.minerals.net/mineral/diopside.aspx')
  
