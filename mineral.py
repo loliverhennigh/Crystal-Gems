@@ -103,13 +103,14 @@ class Mineral:
     image_name = './' + self.name + '/' + url.split('/')[-1]
     if not is_jpg(img_data):
       image_name = image_name[:-4] + '.png'
+    print(image_name)
     self.image_paths.append(image_name)
     with open(image_name, 'wb') as handler:
       handler.write(img_data)
 
 def is_jpg(data):
     if data[:4] != '\xff\xd8\xff\xe0': return False
-    if data[6:] != 'JFIF\0': return False
+    #if data[6:] != 'JFIF\0': return False
     return True
 
 #def add_image(self, url):
