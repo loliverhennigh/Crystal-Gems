@@ -28,8 +28,8 @@ class Mineral:
     self.image_urls = []
     self.image_paths = []
     self.scrape_text(url)
-    if not os.path.exists('./' + self.name):
-      os.mkdir('./' + self.name)
+    if not os.path.exists('./data/' + self.name):
+      os.mkdir('./data/' + self.name)
 
   def scrape_text(self, url):    
     # get text
