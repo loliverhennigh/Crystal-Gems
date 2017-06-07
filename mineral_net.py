@@ -19,25 +19,30 @@ class Mineral_Net:
     self.mineral_names = []
     self.image_urls = defaultdict(list)
     self.mineral_urls = dict()
+    print("scraping urls")
     self.generate_url_lists()
 
-    for name in self.mineral_names:
+    print("creating list of minerals")
+    for name in tqdm(self.mineral_names):
       self.minerals[name] = Mineral(name, self.mineral_urls[name])
 
-    # Downloading images
+    print("downloading images")
     for name in tqdm(self.mineral_names):
       for image in self.image_urls[name]:
         self.minerals[name].add_image(image)
 
-    for name in self.mineral_names:
-      self.minerals[name].print_all_attributes()
+    print("creating tf records")
+    for name in tqdm(self.mineral_names):
+      self.minerals[name].create_tf_record()
+    #for name in self.mineral_names:
+    #  self.minerals[name].print_all_attributes()
 
   def generate_url_lists(self):
     # find all mineral urls i need
     base_url = 'http://www.minerals.net/MineralImages'
     abc_url_list = []
     #for l in ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','T','U','V','W','X','Y','Z']:
-    for l in ['Z']:
+    for l in ['N']:
       abc_url_list.append(base_url + '/' + l + '.aspx')
     for url in abc_url_list:
       print("scanning page " + url + " ...")
@@ -54,7 +59,8 @@ class Mineral_Net:
     # modify image urls to make larger (remove -t flag)
     for name in self.image_urls:
       for i in xrange(len(self.image_urls[name])):
-        self.image_urls[name][i] = self.image_urls[name][i][:-6] + ".jpg"
+        #self.image_urls[name][i] = 'http://www.minerals.net/' + self.image_urls[name][i][:-6] + ".jpg"
+        self.image_urls[name][i] = 'http://www.minerals.net/' + self.image_urls[name][i]
 
     # make list of mineral names
     for name in self.image_urls:   
