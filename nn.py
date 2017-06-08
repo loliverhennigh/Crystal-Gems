@@ -7,9 +7,6 @@ import numpy as np
 
 FLAGS = tf.app.flags.FLAGS
 
-tf.app.flags.DEFINE_float('weight_decay', 0.0005,
-                          """ """)
-
 def int_shape(x):
   return list(map(int, x.get_shape()))
 
@@ -58,12 +55,34 @@ def _variable(name, shape, initializer):
   var = tf.get_variable(name, shape, initializer=initializer)
   return var
 
-def mobius_pad(inputs):
-  #inputs_mobius = tf.concat(axis=1, values=[tf.zeros_like(inputs[:,-1:]), inputs, tf.zeros_like(inputs[:,0:1])]) 
-  inputs_mobius = tf.concat(axis=1, values=[inputs[:,-1:], inputs, inputs[:,0:1]]) 
-  #inputs_mobius = tf.concat(axis=2, values=[tf.zeros_like(inputs_mobius[:,:,-1:]), inputs_mobius, tf.zeros_like(inputs_mobius[:,:,0:1])])
-  inputs_mobius = tf.concat(axis=2, values=[inputs_mobius[:,:,-1:], inputs_mobius, inputs_mobius[:,:,0:1]])
-  return inputs_mobius
+def softmax_binary(inputs):
+  inputs_shape = int_shape(inputs)
+  inputs = tf.reshape(inputs, [inputs_shape[0]*inputs_shape[1]/2, 2])
+  inputs = tf.nn.softmax(inputs)
+  inputs = tf.reshape(inputs, [inputs_shape[0], inputs_shape[1]])
+  return inputs
+
+def cross_entropy_binary(label, logit):
+  # reshape label vectore
+  label_store = label
+  label_shape = int_shape(label)
+  label_1 = tf.split(label, label_shape[1], axis=1)
+  label_0 = tf.split((1.0 -label), label_shape[1], axis=1)
+  new_label = []
+  for i in xrange(label_shape[1]):
+    new_label.append(label_1[i])
+    new_label.append(label_0[i])
+  label = tf.concat(new_label, axis=1)
+  label = tf.reshape(label, [label_shape[0]*label_shape[1], 2])
+  # reshape logits vector
+  logit = tf.reshape(logit, [label_shape[0]*label_shape[1], 2])
+  # loss
+  loss = tf.nn.softmax_cross_entropy_with_logits(labels = label, logits = logit)
+  loss = tf.reduce_mean(loss) 
+  return loss
+
+def max_pool_layer(inputs, kernel_size, stride):
+  return tf.nn.max_pool(inputs, ksize=[1, kernel_size, kernel_size, 1], strides=[1, stride, stride, 1], padding='SAME')
 
 def conv_layer(inputs, kernel_size, stride, num_features, idx, nonlinearity=None):
   with tf.variable_scope('{0}_conv'.format(idx)) as scope:
@@ -72,8 +91,7 @@ def conv_layer(inputs, kernel_size, stride, num_features, idx, nonlinearity=None
     weights = _variable('weights', shape=[kernel_size,kernel_size,input_channels,num_features],initializer=tf.contrib.layers.xavier_initializer_conv2d())
     biases = _variable('biases',[num_features],initializer=tf.contrib.layers.xavier_initializer_conv2d())
 
-    inputs_mobius = mobius_pad(inputs)
-    conv = tf.nn.conv2d(inputs_mobius, weights, strides=[1, stride, stride, 1], padding='VALID')
+    conv = tf.nn.conv2d(inputs, weights, strides=[1, stride, stride, 1], padding='SAME')
     conv = tf.nn.bias_add(conv, biases)
     if nonlinearity is not None:
       conv = nonlinearity(conv)
@@ -107,8 +125,8 @@ def fc_layer(inputs, hiddens, idx, nonlinearity=concat_elu, flat = False):
       dim = input_shape[1]
       inputs_processed = inputs
     
-    weights = _variable('weights', shape=[dim,hiddens],initializer=tf.contrib.layers.xavier_initializer())
-    biases = _variable('biases', [hiddens], initializer=tf.contrib.layers.xavier_initializer())
+    weights = _variable('weights', shape=[dim,hiddens],initializer=tf.truncated_normal_initializer(stddev=0.1))
+    biases = _variable('biases', [hiddens], initializer=tf.truncated_normal_initializer(stddev=0.1))
     output = tf.add(tf.matmul(inputs_processed,weights),biases,name=str(idx)+'_fc')
     if nonlinearity is not None:
       output = nonlinearity(output)

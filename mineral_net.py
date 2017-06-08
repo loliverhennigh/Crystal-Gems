@@ -41,8 +41,8 @@ class Mineral_Net:
     # find all mineral urls i need
     base_url = 'http://www.minerals.net/MineralImages'
     abc_url_list = []
-    #for l in ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','T','U','V','W','X','Y','Z']:
-    for l in ['N']:
+    #for l in ['N']:
+    for l in ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','T','U','V','W','X','Y','Z']:
       abc_url_list.append(base_url + '/' + l + '.aspx')
     for url in abc_url_list:
       print("scanning page " + url + " ...")

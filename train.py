@@ -1,8 +1,10 @@
 import numpy as np
 import tensorflow as tf
+import os
 
 import model
 import inputs 
+import time
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -13,22 +15,40 @@ def train():
   with tf.Graph().as_default():
     # global step counter
     global_step = tf.get_variable('global_step', [], initializer=tf.constant_initializer(0), trainable=False)
-    # make inputs
-    images, crystal_systems, fractures, groupss_t, rock_types = inputs.inputs(32) 
-    # create and unrap network
-    groupss_p = model.inference(images) 
-    # calc error
-    error = model.loss(groupss_t, groupss_s)
+
+    # make inputs mineral
+    images_train, crystal_systems_train_t, fractures_train_t, groupss_train_t, rock_types_train_t = inputs.inputs_mineral(FLAGS.batch_size, train=True) 
+    images_test, crystal_systems_test_t, fractures_test_t, groupss_test_t, rock_types_test_t = inputs.inputs_mineral(FLAGS.batch_size, train=False) 
+
+    # make inputs cifar
+    images_cifar, labels_cifar = inputs.inputs_cifar10(FLAGS.batch_size) 
+
+    # create network train
+    crystal_systems_train_p, fractures_train_p, groupss_train_p, rock_types_train_p = model.inference(images_train, keep_prob=0.5) 
+    crystal_systems_test_p, fractures_test_p, groupss_test_p, rock_types_test_p = model.inference(images_test, reuse=True) 
+
+    # create network cifar
+    logits_cifar = model.inference(images_cifar, train_on="cifar10", reuse=True) 
+
+    # calc error mineral
+    error_train = model.loss_mineral(crystal_systems_train_t, fractures_train_t, groupss_train_t, rock_types_train_t, crystal_systems_train_p, fractures_train_p, groupss_train_p, rock_types_train_p, train=True)
+    error_test = model.loss_mineral(crystal_systems_test_t, fractures_test_t, groupss_test_t, rock_types_test_t, crystal_systems_test_p, fractures_test_p, groupss_test_p, rock_types_test_p, train=False)
+
+    # calc error cifar
+    error_cifar = model.loss_cifar10(logits_cifar, labels_cifar)
+
     # train hopefuly 
-    train_op = model.train(error, FLAGS.learning_rate)
+    train_op_mineral = model.train(error_train, FLAGS.learning_rate, global_step)
+    train_op_cifar = model.train(error_cifar, FLAGS.learning_rate, global_step)
+
     # List of all Variables
     variables = tf.global_variables()
 
     # Build a saver
     saver = tf.train.Saver(tf.global_variables())   
-    for i, variable in enumerate(variables):
-      print '----------------------------------------------'
-      print variable.name[:variable.name.index(':')]
+    #for i, variable in enumerate(variables):
+    #  print '----------------------------------------------'
+    #  print variable.name[:variable.name.index(':')]
 
     # Summary op
     summary_op = tf.summary.merge_all()
@@ -63,26 +83,40 @@ def train():
 
     # calc number of steps left to run
     run_steps = FLAGS.max_steps - int(sess.run(global_step))
+    _ , loss_mineral = sess.run([train_op_mineral, error_train])
     for step in xrange(run_steps):
       current_step = sess.run(global_step)
       t = time.time()
-      _ , loss_value = sess.run([train_op, error],feed_dict={boundary:fd_boundary})
+      #print(sess.run(images_train))
+      if current_step > 40000:
+        _, loss_mineral = sess.run([train_op_mineral, error_train])
+        #loss_cifar = sess.run([error_cifar])
+      else:
+        loss_mineral = sess.run(error_train)
+      _ , loss_cifar = sess.run([train_op_cifar, error_cifar])
+      #print(sess.run(logits_cifar))
+      #print(sess.run(labels_cifar))
       elapsed = time.time() - t
 
-      assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
+      assert not np.isnan(loss_mineral), 'Model diverged with loss = NaN'
 
-      if current_step%10 == 0:
-        print("loss value at " + str(loss_value))
+      if current_step % 100 == 1:
+        #print("groupss_p_out " + str(groupss_p_out))
+        #print("groupss_t_out " + str(groupss_t_out))
+        print("loss mineral value at " + str(loss_mineral))
+        print("loss cifar value at " + str(loss_cifar))
         print("time per batch is " + str(elapsed))
 
-      if current_step%50 == 0:
-        summary_str = sess.run(summary_op, feed_dict={boundary:fd_boundary})
+      if current_step % 1000 == 1:
+        loss_test_value = sess.run(error_test)
+        summary_str = sess.run(summary_op)
         summary_writer.add_summary(summary_str, current_step) 
         checkpoint_path = os.path.join(TRAIN_DIR, 'model.ckpt')
         saver.save(sess, checkpoint_path, global_step=global_step)  
         print("saved to " + TRAIN_DIR)
 
 def main(argv=None):  # pylint: disable=unused-argument
+  model.maybe_download_and_extract()
   train()
 
 if __name__ == '__main__':

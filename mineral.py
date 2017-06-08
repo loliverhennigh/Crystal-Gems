@@ -113,10 +113,15 @@ class Mineral:
   def print_attribute(self, att):
     print(att + ": " + self.attributes[att])
 
-  def create_tf_record(self):
+  def create_tf_record(self, train_test_split=0.8):
     base_dir = './tfrecords/'
-    record_filename = base_dir + self.name + '.tfrecord'
-    writer = tf.python_io.TFRecordWriter(record_filename)
+    train_record_filename = base_dir + self.name + '_train.tfrecord'
+    train_writer = tf.python_io.TFRecordWriter(train_record_filename)
+
+    test_record_filename = base_dir + self.name + '_test.tfrecord'
+    test_writer = tf.python_io.TFRecordWriter(test_record_filename)
+
+
     crystal_system_vec = self.crystal_system_to_vec().tostring()
     fracture_vec = self.fracture_to_vec().tostring()
     tenacity_vec = self.tenacity_to_vec().tostring()
@@ -130,18 +135,25 @@ class Mineral:
         'groups':         _bytes_feature(groups_vec),
         'rock_type':      _bytes_feature(rock_type_vec),
         'image':          _bytes_feature(image)}))
-      writer.write(example.SerializeToString())
+      split = np.random.rand()
+      if split > train_test_split:
+        test_writer.write(example.SerializeToString())
+      else:
+        train_writer.write(example.SerializeToString())
     
   def load_image(self, image_name):
     image = cv2.imread(image_name)
+    image = cv2.resize(image, (110, 110))
     return image 
 
   def crystal_system_to_vec(self):
     vec = np.zeros(len(CRYSTAL_SYSTEM))
     for i in xrange(len(CRYSTAL_SYSTEM)):
-      if CRYSTAL_SYSTEM[i] in self.attributes['crystal_system']:
+      if CRYSTAL_SYSTEM[i] == self.attributes['crystal_system']:
         vec[i] = 1.0
     vec = np.uint8(vec)
+    print("crystal_vec")
+    print(vec)
     return vec
 
   def fracture_to_vec(self):
@@ -150,6 +162,8 @@ class Mineral:
       if FRACTURES[i] in self.attributes['fracture']:
         vec[i] = 1.0
     vec = np.uint8(vec)
+    print("fracture_vec")
+    print(vec)
     return vec
 
   def tenacity_to_vec(self):
