@@ -38,6 +38,7 @@ def train():
     error_cifar = model.loss_cifar10(logits_cifar, labels_cifar)
 
     # train hopefuly 
+    #train_op_mineral = model.train(error_train, FLAGS.learning_rate, global_step, train_type="mineral_network")
     train_op_mineral = model.train(error_train, FLAGS.learning_rate, global_step)
     train_op_cifar = model.train(error_cifar, FLAGS.learning_rate, global_step)
 
@@ -84,30 +85,30 @@ def train():
     # calc number of steps left to run
     run_steps = FLAGS.max_steps - int(sess.run(global_step))
     _ , loss_mineral = sess.run([train_op_mineral, error_train])
+    _ , loss_cifar = sess.run([train_op_cifar, error_cifar])
     for step in xrange(run_steps):
       current_step = sess.run(global_step)
       t = time.time()
       #print(sess.run(images_train))
-      if current_step > 40000:
-        _, loss_mineral = sess.run([train_op_mineral, error_train])
-        #loss_cifar = sess.run([error_cifar])
-      else:
-        loss_mineral = sess.run(error_train)
-      _ , loss_cifar = sess.run([train_op_cifar, error_cifar])
+      _, loss_mineral = sess.run([train_op_mineral, error_train])
+      _, loss_cifar = sess.run([train_op_cifar, error_cifar])
+      _, loss_cifar = sess.run([train_op_cifar, error_cifar])
       #print(sess.run(logits_cifar))
       #print(sess.run(labels_cifar))
       elapsed = time.time() - t
 
       assert not np.isnan(loss_mineral), 'Model diverged with loss = NaN'
 
-      if current_step % 100 == 1:
+      if current_step % 101 == 1:
+        loss_cifar = sess.run([error_cifar])
+        loss_mineral = sess.run(error_train)
         #print("groupss_p_out " + str(groupss_p_out))
         #print("groupss_t_out " + str(groupss_t_out))
         print("loss mineral value at " + str(loss_mineral))
         print("loss cifar value at " + str(loss_cifar))
         print("time per batch is " + str(elapsed))
 
-      if current_step % 1000 == 1:
+      if current_step % 1001 == 1:
         loss_test_value = sess.run(error_test)
         summary_str = sess.run(summary_op)
         summary_writer.add_summary(summary_str, current_step) 

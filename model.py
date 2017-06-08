@@ -51,12 +51,12 @@ def inference(images, nr_res=1, nr_downsamples=4, reuse=False, keep_prob=1.0, tr
     x_i = nn.conv_layer(x_i, 3, 1, 256, "conv_7", nonlinearity=tf.nn.relu)
     x_i = nn.conv_layer(x_i, 3, 1, 256, "conv_8", nonlinearity=tf.nn.relu)
     x_i = nn.max_pool_layer(x_i, 2, 2)
-    x_i = nn.fc_layer(x_i, 1024, "fc_0", flat=True, nonlinearity=tf.nn.relu) 
+    x_i = nn.fc_layer(x_i, 2048, "fc_0", flat=True, nonlinearity=tf.nn.relu) 
     x_i = tf.nn.dropout(x_i, keep_prob)
 
   if train_on == "mineral":
     with tf.variable_scope("logits_mineral", reuse=reuse):
-      x_i = nn.fc_layer(x_i, 256, "fc_0", nonlinearity=tf.nn.relu) 
+      x_i = nn.fc_layer(x_i, 512, "fc_0", nonlinearity=tf.nn.relu) 
       x_i = tf.nn.dropout(x_i, keep_prob)
       crystal_system = nn.fc_layer(x_i, 7, "fc_crystal_system", nonlinearity=None) 
       fracture = nn.fc_layer(x_i, 8*2, "fc_fracture", nonlinearity=None) 
@@ -66,7 +66,7 @@ def inference(images, nr_res=1, nr_downsamples=4, reuse=False, keep_prob=1.0, tr
 
   if train_on == "cifar10":
     with tf.variable_scope("logits_cifar"):
-      x_i = nn.fc_layer(x_i, 256, "fc_0", nonlinearity=tf.nn.relu) 
+      x_i = nn.fc_layer(x_i, 512, "fc_0", nonlinearity=tf.nn.relu) 
       x_i = tf.nn.dropout(x_i, keep_prob)
       label = nn.fc_layer(x_i, 10, "fc_classes", nonlinearity=None) 
     return label
@@ -84,8 +84,8 @@ def loss_mineral(crystal_system_t, fracture_t, groups_t, rock_type_t, crystal_sy
   tf.summary.scalar('loss rock type_train_' + str(train), loss_rock_type)
 
   #total_loss = loss_rock_type
-  #total_loss = loss_crystal_system
-  total_loss = loss_crystal_system + loss_fracture + loss_groups + loss_rock_type
+  total_loss = loss_crystal_system
+  #total_loss = loss_crystal_system + loss_fracture + loss_groups + loss_rock_type
   tf.summary.scalar('total loss_train_' + str(train), total_loss)
   return total_loss
 
@@ -97,8 +97,13 @@ def loss_cifar10(logits, labels):
   tf.summary.scalar('cifar loss', loss)
   return loss
 
-def train(total_loss, lr, global_step):
-   train_op = tf.train.AdamOptimizer(lr).minimize(total_loss, global_step)
+def train(total_loss, lr, global_step, train_type=None):
+   if train_type=="mineral_network":
+     variables_to_train_mineral = tf.all_variables()
+     variables_to_train_mineral = [variable for i, variable in enumerate(variables_to_train_mineral) if "logits_mineral" in variable.name[:variable.name.index(':')]]
+     train_op = tf.train.AdamOptimizer(lr, ).minimize(total_loss, global_step, var_list=variables_to_train_mineral)
+   else:
+     train_op = tf.train.AdamOptimizer(lr).minimize(total_loss, global_step)
    return train_op
 
 def maybe_download_and_extract():

@@ -69,8 +69,8 @@ def _generate_image_label_batch_mineral(image, crystal_system, fracture, groups,
     [image, crystal_system, fracture, groups, rock_type],
     batch_size=batch_size,
     num_threads=num_preprocess_threads,
-    capacity=100 + 3 * batch_size,
-    min_after_dequeue=100)
+    capacity=1000 + 3 * batch_size,
+    min_after_dequeue=1000)
   return images, crystal_systems, fractures, groupss, rock_types
 
 
@@ -80,8 +80,8 @@ def _generate_image_and_label_batch_cifar10(image, label, batch_size):
         [image, label],
         batch_size=batch_size,
         num_threads=num_preprocess_threads,
-        capacity=100 + 3 * batch_size,
-        min_after_dequeue=100)
+        capacity=1000 + 3 * batch_size,
+        min_after_dequeue=1000)
   return images, tf.reshape(label_batch, [batch_size])
 
 def inputs_mineral(batch_size, train=True):
@@ -96,12 +96,12 @@ def inputs_mineral(batch_size, train=True):
   # data augmentation
   image = tf.image.random_flip_left_right(image)
   image = tf.image.random_flip_up_down(image)
-  #image = tf.image.random_brightness(image, max_delta=40)
-  #image = tf.image.random_contrast(image, 0.5, 1.5)
+  image = tf.image.random_brightness(image, max_delta=25)
+  image = tf.image.random_contrast(image, 0.8, 1.2)
    
-  image = tf.random_crop(image, [100, 100, 3])
-  image = tf.reshape(image, [1, 100, 100, 3])
-  image = tf.image.resize_nearest_neighbor(image, [112, 112])
+  image = tf.random_crop(image, [80, 80, 3])
+  image = tf.reshape(image, [1, 80, 80, 3])
+  image = tf.image.resize_bicubic(image, [112, 112])
   image = tf.reshape(image, [112, 112, 3])
   image = tf.image.per_image_standardization(image)
     
